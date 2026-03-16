@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+release/
+out/
+
+# Test cache
+coverage/
+.vitest/
+
+# Logs
+pnpm-debug.log*
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Environment
+.env
+.env.local
+
+# Internal planning docs (not published)
+docs/temp/
+
+# Electron builder
+!fixtures/fixture.db
