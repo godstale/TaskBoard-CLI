@@ -37,6 +37,7 @@ type FlatRow =
 interface Props {
   project: ProjectInfo | undefined
   epics: EpicWithTasks[]
+  objectives: Task[]
   setScreen: (screen: Screen) => void
   setSelectedTask: (id: string | null) => void
   [key: string]: any
@@ -45,7 +46,7 @@ interface Props {
 // Fixed overhead rows: tab bar (3) + outer padding (2) + dashboard header (3) + header margin (1)
 const OVERHEAD_ROWS = 9
 
-export function Dashboard({ project, epics, setScreen, setSelectedTask }: Props) {
+export function Dashboard({ project, epics, objectives, setScreen, setSelectedTask }: Props) {
   const { stdout } = useStdout()
   const allTasks = useMemo(() => epics.flatMap(e => e.tasks.map(t => t.task)), [epics])
   const doneTasks = allTasks.filter(t => t.status === 'done').length
@@ -136,12 +137,25 @@ export function Dashboard({ project, epics, setScreen, setSelectedTask }: Props)
           if (row.kind === 'task') {
             const isSelected = row.flatIdx === selectedIdx
             return (
-              <Box key={row.task.id} marginLeft={2}>
-                <Text color="cyan">{isSelected ? '▶ ' : '  '}</Text>
-                <Text color={isSelected ? 'cyan' : STATUS_COLOR[row.task.status]} bold={isSelected}>
-                  {STATUS_ICON[row.task.status]} [{row.task.id}] {row.task.title}
-                </Text>
-                <Text dimColor>  {row.task.status}</Text>
+              <Box key={row.task.id} marginLeft={2} flexDirection="column">
+                <Box>
+                  <Text color="cyan">{isSelected ? '▶ ' : '  '}</Text>
+                  <Text color={isSelected ? 'cyan' : STATUS_COLOR[row.task.status]} bold={isSelected}>
+                    {STATUS_ICON[row.task.status]} [{row.task.id}] {row.task.title}
+                  </Text>
+                  <Text dimColor>  {row.task.status}</Text>
+                  {row.task.workflow_id && (
+                    <Text dimColor>  [{row.task.workflow_id}]</Text>
+                  )}
+                  {row.task.parallel_group && (
+                    <Text color="magenta">  ⇉{row.task.parallel_group}</Text>
+                  )}
+                </Box>
+                {row.task.status === 'interrupted' && row.task.interrupt && (
+                  <Box marginLeft={4}>
+                    <Text color="red">⚠ {row.task.interrupt}</Text>
+                  </Box>
+                )}
               </Box>
             )
           }
@@ -158,6 +172,26 @@ export function Dashboard({ project, epics, setScreen, setSelectedTask }: Props)
         })}
         {canScrollDown && <Text dimColor>  ↓ 아래로 더 있음</Text>}
       </Box>
+
+      {/* Objectives section */}
+      {objectives && objectives.length > 0 && (
+        <Box flexDirection="column" marginTop={1}>
+          <Text bold color="magenta">Objectives</Text>
+          {objectives.map(obj => (
+            <Box key={obj.id} marginLeft={2}>
+              <Text color={STATUS_COLOR[obj.status]}>
+                {STATUS_ICON[obj.status]} [{obj.id}] {obj.title}
+              </Text>
+              {obj.due_date && (
+                <Text dimColor>  due: {obj.due_date}</Text>
+              )}
+              {obj.milestone_target && (
+                <Text dimColor>  🎯 {obj.milestone_target}</Text>
+              )}
+            </Box>
+          ))}
+        </Box>
+      )}
     </Box>
   )
 }

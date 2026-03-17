@@ -1,12 +1,15 @@
 import { useState, useEffect, useCallback } from 'react'
 import { openDb, closeDb, getProject, getEpicsWithTasks,
          getWorkflowOrder, getOperations, getResources,
-         getSettings, watch } from './core/index.js'
-import type { EpicWithTasks, Operation, Resource, Setting, ProjectInfo } from './core/index.js'
+         getSettings, getWorkflows, getObjectives, getCheckpoints, watch } from './core/index.js'
+import type {
+  EpicWithTasks, Operation, Resource, Setting, ProjectInfo,
+  Workflow, Task, Checkpoint
+} from './core/index.js'
 
 export type Db = ReturnType<typeof openDb>
 
-export type Screen = 'dashboard' | 'taskops' | 'resources' | 'settings'
+export type Screen = 'dashboard' | 'taskops' | 'workflows' | 'resources' | 'settings'
 
 interface TaskBoardState {
   project: ProjectInfo | undefined
@@ -14,6 +17,9 @@ interface TaskBoardState {
   operations: Operation[]
   resources: Resource[]
   settings: Setting[]
+  workflows: Workflow[]
+  objectives: Task[]
+  checkpoints: Checkpoint[]
   selectedTaskId: string | null
   screen: Screen
   error: string | null
@@ -22,7 +28,8 @@ interface TaskBoardState {
 export function useTaskBoard(dbPath: string) {
   const [state, setState] = useState<TaskBoardState>({
     project: undefined, epics: [], operations: [], resources: [],
-    settings: [], selectedTaskId: null, screen: 'dashboard', error: null,
+    settings: [], workflows: [], objectives: [], checkpoints: [],
+    selectedTaskId: null, screen: 'dashboard', error: null,
   })
 
   const reload = useCallback(() => {
@@ -36,6 +43,9 @@ export function useTaskBoard(dbPath: string) {
         operations: getOperations(db!),
         resources: getResources(db!),
         settings: getSettings(db!),
+        workflows: getWorkflows(db!),
+        objectives: getObjectives(db!),
+        checkpoints: getCheckpoints(db!),
         error: null,
       }))
     } catch (e) {

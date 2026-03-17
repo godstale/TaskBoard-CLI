@@ -13,6 +13,7 @@ export interface Task {
   description?: string
   status: TaskStatus
   parent_id?: string
+  workflow_id?: string
   todo?: string
   interrupt?: string
   milestone_target?: string
@@ -84,4 +85,22 @@ export interface ProjectSummary {
   totalEpics: number
   totalTasks: number
   tasksByStatus: Record<TaskStatus, number>
+}
+
+export type WorkflowStatus = 'active' | 'completed' | 'archived'
+
+export interface Workflow {
+  id: string
+  project_id: string
+  title: string
+  source_file?: string
+  status: WorkflowStatus
+  created_at: string
+}
+
+export interface Checkpoint {
+  id: number
+  note?: string
+  snapshot: string   // JSON: {task_id: {status, interrupt}}
+  created_at: string
 }

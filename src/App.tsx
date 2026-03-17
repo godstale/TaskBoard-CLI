@@ -5,13 +5,15 @@ import { useTaskBoard, Screen } from './useTaskBoard.js'
 import { useSafeInput } from './useSafeInput.js'
 import { Dashboard } from './screens/Dashboard.js'
 import { TaskOperations } from './screens/TaskOperations.js'
+import { Workflows } from './screens/Workflows.js'
 import { Resources } from './screens/Resources.js'
 import { Settings } from './screens/Settings.js'
 
-const SCREENS: Screen[] = ['dashboard', 'taskops', 'resources', 'settings']
+const SCREENS: Screen[] = ['dashboard', 'taskops', 'workflows', 'resources', 'settings']
 const SCREEN_LABELS: Record<Screen, string> = {
   dashboard: 'Dashboard',
   taskops: 'Task Ops',
+  workflows: 'Workflows',
   resources: 'Resources',
   settings: 'Settings',
 }
@@ -59,8 +61,9 @@ export function App({ dbPath }: Props) {
       <Box flexGrow={1} flexDirection="column" key={board.screen}>
         {board.screen === 'dashboard' && <Dashboard {...board} />}
         {board.screen === 'taskops' && <TaskOperations {...board} />}
+        {board.screen === 'workflows' && <Workflows workflows={board.workflows} epics={board.epics} />}
         {board.screen === 'resources' && <Resources resources={board.resources} />}
-        {board.screen === 'settings' && <Settings settings={board.settings} />}
+        {board.screen === 'settings' && <Settings settings={board.settings} checkpoints={board.checkpoints} />}
       </Box>
     </Box>
   )

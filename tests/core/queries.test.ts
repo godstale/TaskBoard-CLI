@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { createTestDb } from './helpers'
 import {
   getProject, getEpicsWithTasks, getWorkflowOrder,
-  getOperations, getResources, getSettings
+  getOperations, getResources, getSettings,
+  getWorkflows, getObjectives, getCheckpoints
 } from '../../src/core/queries.js'
 import type { Db } from '../../src/core/db.js'
 
@@ -70,5 +71,36 @@ describe('getSettings', () => {
     const settings = getSettings(db)
     expect(settings.length).toBeGreaterThan(0)
     expect(settings[0].key).toBe('autonomy_level')
+  })
+})
+
+describe('getWorkflows', () => {
+  it('workflows 목록을 반환한다', () => {
+    const workflows = getWorkflows(db)
+    expect(workflows).toHaveLength(1)
+    expect(workflows[0].id).toBe('TST-W001')
+    expect(workflows[0].title).toBe('인증 워크플로우')
+    expect(workflows[0].status).toBe('active')
+  })
+})
+
+describe('getObjectives', () => {
+  it('objective 타입 tasks를 반환한다', () => {
+    const objectives = getObjectives(db)
+    expect(objectives).toHaveLength(1)
+    expect(objectives[0].id).toBe('TST-O001')
+    expect(objectives[0].due_date).toBe('2026-04-01')
+    expect(objectives[0].milestone_target).toBe('Core features done')
+  })
+})
+
+describe('getCheckpoints', () => {
+  it('checkpoints를 최신순으로 반환한다', () => {
+    const checkpoints = getCheckpoints(db)
+    expect(checkpoints).toHaveLength(1)
+    expect(checkpoints[0].id).toBe(1)
+    expect(checkpoints[0].note).toBe('before-refactor')
+    const snap = JSON.parse(checkpoints[0].snapshot)
+    expect(snap['TST-T001'].status).toBe('done')
   })
 })

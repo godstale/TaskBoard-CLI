@@ -1,7 +1,8 @@
 import type { Db } from './db.js'
 import type {
   Task, Operation, Resource, Setting,
-  ProjectInfo, EpicWithTasks, TaskWithChildren
+  ProjectInfo, EpicWithTasks, TaskWithChildren,
+  Workflow, Checkpoint
 } from './models.js'
 import fs from 'fs'
 import path from 'path'
@@ -118,6 +119,44 @@ export function getProjectList(taskopsRoot: string): Array<{ name: string; dbPat
 
   scan(taskopsRoot, 3)
   return results
+}
+
+export function getWorkflows(db: Db): Workflow[] {
+  try {
+    return db.prepare("SELECT * FROM workflows ORDER BY created_at ASC").all() as Workflow[]
+  } catch {
+    return []
+  }
+}
+
+export function getWorkflowTasks(db: Db, workflowId: string): Task[] {
+  try {
+    const rows = db.prepare(
+      "SELECT * FROM tasks WHERE workflow_id = ? AND type = 'task' ORDER BY seq_order ASC NULLS LAST, created_at ASC"
+    ).all(workflowId) as any[]
+    return rows.map(parseTask)
+  } catch {
+    return []
+  }
+}
+
+export function getObjectives(db: Db): Task[] {
+  try {
+    const rows = db.prepare(
+      "SELECT * FROM tasks WHERE type = 'objective' ORDER BY due_date ASC NULLS LAST, created_at ASC"
+    ).all() as any[]
+    return rows.map(parseTask)
+  } catch {
+    return []
+  }
+}
+
+export function getCheckpoints(db: Db): Checkpoint[] {
+  try {
+    return db.prepare("SELECT * FROM checkpoints ORDER BY created_at DESC").all() as Checkpoint[]
+  } catch {
+    return []
+  }
 }
 
 export function getProjectSummary(db: Db) {
