@@ -130,7 +130,7 @@ export function TaskOperations({ epics, operations, selectedTaskId, setSelectedT
         ))}
         {winStart + TASK_WIN < allTasks.length && <Text dimColor>{' >'}</Text>}
       </Box>
-      <Text dimColor>[←→] Task 선택  [↑↓] Operation 선택</Text>
+      <Text dimColor>[←→] Select Task  [↑↓] Select Operation</Text>
 
       {/* Operation list */}
       <Box borderStyle="single" flexDirection="column" paddingX={2} marginTop={1}>
@@ -139,7 +139,7 @@ export function TaskOperations({ epics, operations, selectedTaskId, setSelectedT
             <Text bold>{selectedTask.id}: {selectedTask.title}</Text>
             <Text dimColor>{'─'.repeat(40)}</Text>
             {taskOps.length === 0 && <Text dimColor>No operations recorded</Text>}
-            {canScrollUp && <Text dimColor>  ↑ 위로 더 있음</Text>}
+            {canScrollUp && <Text dimColor>  ↑ More above</Text>}
             {visibleOps.map((op, i) => {
               const absIdx = opScrollOffset + i
               const isSelected = absIdx === selectedOpIdx
@@ -156,7 +156,7 @@ export function TaskOperations({ epics, operations, selectedTaskId, setSelectedT
                 </Box>
               )
             })}
-            {canScrollDown && <Text dimColor>  ↓ 아래로 더 있음</Text>}
+            {canScrollDown && <Text dimColor>  ↓ More below</Text>}
           </>
         ) : (
           <Text dimColor>No task selected</Text>
@@ -212,10 +212,10 @@ export function TaskOperations({ epics, operations, selectedTaskId, setSelectedT
               </Box>
             )}
             {/* Fallback: no new data */}
-            {!hasNewFields && <Text dimColor>상세 정보 없음</Text>}
+            {!hasNewFields && <Text dimColor>No extra details</Text>}
           </>
         ) : (
-          <Text dimColor>operation을 선택하세요</Text>
+          <Text dimColor>Select an operation</Text>
         )}
       </Box>
     </Box>

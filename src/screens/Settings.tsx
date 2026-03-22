@@ -11,13 +11,24 @@ export function Settings({ settings, checkpoints = [] }: Props) {
   return (
     <Box flexDirection="column" padding={1}>
       <Text bold>Settings</Text>
-      <Text dimColor>{'─'.repeat(50)}</Text>
+      <Text dimColor>{'─'.repeat(60)}</Text>
       {settings.length === 0 && <Text dimColor>No settings found</Text>}
       {settings.map(s => (
-        <Box key={s.key} marginBottom={0}>
-          <Text color="cyan">{s.key.padEnd(24)}</Text>
-          <Text color="yellow">{s.value.padEnd(16)}</Text>
-          {s.description && <Text dimColor>{s.description}</Text>}
+        <Box key={`${s.workflow_id}-${s.key}`} marginBottom={0}>
+          <Box width={15}>
+            <Text color="magenta">{s.workflow_id || '[GLOBAL]'}</Text>
+          </Box>
+          <Box width={20}>
+            <Text color="cyan">{s.key}</Text>
+          </Box>
+          <Box width={20}>
+            <Text color="yellow">{s.value}</Text>
+          </Box>
+          {s.description && (
+             <Box flexGrow={1}>
+               <Text dimColor>{s.description}</Text>
+             </Box>
+          )}
         </Box>
       ))}
 
@@ -25,7 +36,7 @@ export function Settings({ settings, checkpoints = [] }: Props) {
         <>
           <Box marginTop={1}>
             <Text bold>Checkpoints</Text>
-            <Text dimColor>  (최근 {checkpoints.length}개)</Text>
+            <Text dimColor>  ({checkpoints.length} recent)</Text>
           </Box>
           <Text dimColor>{'─'.repeat(50)}</Text>
           {checkpoints.map(cp => {

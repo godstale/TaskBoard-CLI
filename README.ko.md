@@ -65,7 +65,7 @@ node dist/index.js --path /path/to/taskops-root
 
 | 키 | 동작 |
 |----|------|
-| `Tab` | 화면 전환 |
+| `Tab` / `Shift+Tab` | 화면 전환 (순방향/역방향) |
 | `R` | 데이터 새로고침 |
 | `Q` | 종료 |
 | `↑` / `↓` | Task 선택 (Dashboard); 작업 이력 스크롤 (Task Operations) |

@@ -1,6 +1,6 @@
 {
   "name": "taskboard-cli",
-  "version": "0.2.2",
+  "version": "0.2.6",
   "description": "Terminal UI for visualizing TaskOps projects",
   "type": "module",
   "bin": {

@@ -30,6 +30,7 @@ export interface Operation {
   task_id: string
   operation_type: OperationType
   agent_platform?: string
+  workflow_id?: string
   summary?: string
   details?: string
   subagent_used?: number
@@ -53,10 +54,13 @@ export interface Resource {
   file_path: string
   description?: string
   res_type: ResourceType
+  workflow_id?: string
   created_at: string
 }
 
 export interface Setting {
+  id: number
+  workflow_id: string
   key: string
   value: string
   description?: string
@@ -93,8 +97,10 @@ export interface Workflow {
   id: string
   project_id: string
   title: string
+  description?: string
   source_file?: string
   status: WorkflowStatus
+  report?: string
   created_at: string
 }
 

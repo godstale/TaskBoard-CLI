@@ -21,10 +21,16 @@ export function getProject(db: Db): ProjectInfo | undefined {
   return row ?? undefined
 }
 
-export function getEpicsWithTasks(db: Db): EpicWithTasks[] {
-  const epics = db.prepare(
-    "SELECT * FROM tasks WHERE type = 'epic' ORDER BY seq_order ASC, created_at ASC"
-  ).all() as any[]
+export function getEpicsWithTasks(db: Db, workflowId?: string): EpicWithTasks[] {
+  let epicSql = "SELECT * FROM tasks WHERE type = 'epic'"
+  const params: any[] = []
+  if (workflowId) {
+    epicSql += " AND workflow_id = ?"
+    params.push(workflowId)
+  }
+  epicSql += " ORDER BY seq_order ASC, created_at ASC"
+  
+  const epics = db.prepare(epicSql).all(...params) as any[]
 
   return epics.map(epicRow => {
     const epic = parseTask(epicRow)
@@ -44,37 +50,72 @@ export function getEpicsWithTasks(db: Db): EpicWithTasks[] {
   })
 }
 
-export function getWorkflowOrder(db: Db): Task[] {
-  const rows = db.prepare(
-    "SELECT * FROM tasks WHERE type = 'task' ORDER BY seq_order ASC NULLS LAST, created_at ASC"
-  ).all() as any[]
+export function getWorkflowOrder(db: Db, workflowId?: string): Task[] {
+  let sql = "SELECT * FROM tasks WHERE type = 'task'"
+  const params: any[] = []
+  if (workflowId) {
+    sql += " AND workflow_id = ?"
+    params.push(workflowId)
+  }
+  sql += " ORDER BY seq_order ASC NULLS LAST, created_at ASC"
+  
+  const rows = db.prepare(sql).all(...params) as any[]
   return rows.map(parseTask)
 }
 
-export function getOperations(db: Db, taskId?: string): Operation[] {
+export function getOperations(db: Db, taskId?: string, workflowId?: string): Operation[] {
+  let sql = "SELECT * FROM operations"
+  const params: any[] = []
+  const conditions: string[] = []
+
   if (taskId) {
-    return db.prepare(
-      "SELECT * FROM operations WHERE task_id = ? ORDER BY created_at ASC"
-    ).all(taskId) as Operation[]
+    conditions.push("task_id = ?")
+    params.push(taskId)
   }
-  return db.prepare(
-    "SELECT * FROM operations ORDER BY created_at ASC"
-  ).all() as Operation[]
+  if (workflowId) {
+    conditions.push("workflow_id = ?")
+    params.push(workflowId)
+  }
+
+  if (conditions.length > 0) {
+    sql += " WHERE " + conditions.join(" AND ")
+  }
+  sql += " ORDER BY created_at ASC"
+  
+  return db.prepare(sql).all(...params) as Operation[]
 }
 
-export function getResources(db: Db, taskId?: string): Resource[] {
+export function getResources(db: Db, taskId?: string, workflowId?: string): Resource[] {
+  let sql = "SELECT * FROM resources"
+  const params: any[] = []
+  const conditions: string[] = []
+
   if (taskId) {
-    return db.prepare(
-      "SELECT * FROM resources WHERE task_id = ? ORDER BY created_at ASC"
-    ).all(taskId) as Resource[]
+    conditions.push("task_id = ?")
+    params.push(taskId)
   }
-  return db.prepare(
-    "SELECT * FROM resources ORDER BY created_at ASC"
-  ).all() as Resource[]
+  if (workflowId) {
+    conditions.push("workflow_id = ?")
+    params.push(workflowId)
+  }
+
+  if (conditions.length > 0) {
+    sql += " WHERE " + conditions.join(" AND ")
+  }
+  sql += " ORDER BY created_at ASC"
+
+  return db.prepare(sql).all(...params) as Resource[]
 }
 
-export function getSettings(db: Db): Setting[] {
-  return db.prepare("SELECT * FROM settings ORDER BY key ASC").all() as Setting[]
+export function getSettings(db: Db, workflowId?: string): Setting[] {
+  let sql = "SELECT * FROM settings"
+  const params: any[] = []
+  if (workflowId) {
+    sql += " WHERE workflow_id = ? OR workflow_id = ''"
+    params.push(workflowId)
+  }
+  sql += " ORDER BY key ASC"
+  return db.prepare(sql).all(...params) as Setting[]
 }
 
 /**

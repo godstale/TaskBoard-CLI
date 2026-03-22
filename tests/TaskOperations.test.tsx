@@ -54,6 +54,6 @@ describe('TaskOperations', () => {
       />
     )
     // selectedOpIdx defaults to 0 (the 'start' op which has no v2 fields)
-    expect(lastFrame()).toContain('상세 정보 없음')
+    expect(lastFrame()).toContain('No extra details')
   })
 })

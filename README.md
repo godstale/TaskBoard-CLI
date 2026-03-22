@@ -65,7 +65,7 @@ If `--path` is omitted, the app will prompt for the path interactively on launch
 
 | Key | Action |
 |-----|--------|
-| `Tab` | Switch screen |
+| `Tab` / `Shift+Tab` | Switch screen (Forward/Backward) |
 | `R` | Reload data |
 | `Q` | Quit |
 | `↑` / `↓` | Select task (Dashboard); Scroll operations (Task Operations) |
@@ -132,12 +132,6 @@ pnpm test
 
 # Watch mode
 pnpm test:watch
-```
-
-Regenerate the sample DB:
-
-```bash
-node example/create-sample-db.js
 ```
 
 ---
