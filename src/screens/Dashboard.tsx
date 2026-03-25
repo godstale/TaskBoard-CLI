@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { Box, Text, useStdout } from 'ink'
 import type { Key } from 'ink'
-import type { EpicWithTasks, ProjectInfo, Task, TaskStatus } from '../core/index.js'
+import type { 
+  EpicWithTasks, ProjectInfo, Task, TaskStatus,
+  CurrentlyInProgressTask, WorkflowProgress
+} from '../core/index.js'
 import { useSafeInput } from '../useSafeInput.js'
 import type { Screen } from '../useTaskBoard.js'
 
@@ -38,14 +41,16 @@ interface Props {
   project: ProjectInfo | undefined
   epics: EpicWithTasks[]
   objectives: Task[]
+  activeTasks: CurrentlyInProgressTask[]
+  workflowProgress: WorkflowProgress | undefined
   setScreen: (screen: Screen) => void
   setSelectedTask: (id: string | null) => void
   [key: string]: any
 }
 
-const OVERHEAD_ROWS = 9
+const OVERHEAD_ROWS = 12
 
-export function Dashboard({ project, epics, objectives, setScreen, setSelectedTask }: Props) {
+export function Dashboard({ project, epics, objectives, activeTasks, workflowProgress, setScreen, setSelectedTask }: Props) {
   const { stdout } = useStdout()
   const allTasks = useMemo(() => epics.flatMap(e => e.tasks.map(t => t.task)), [epics])
   const doneTasks = allTasks.filter(t => t.status === 'done').length
@@ -94,7 +99,7 @@ export function Dashboard({ project, epics, objectives, setScreen, setSelectedTa
   }, [epics, selectableRows])
 
   const terminalRows = stdout?.rows ?? 24
-  const availableRows = Math.max(3, terminalRows - OVERHEAD_ROWS)
+  const availableRows = Math.max(3, terminalRows - OVERHEAD_ROWS - (activeTasks?.length > 0 ? 4 : 0))
 
   useEffect(() => {
     const selectedRowIdx = flatRows.findIndex(r => 
@@ -132,17 +137,43 @@ export function Dashboard({ project, epics, objectives, setScreen, setSelectedTa
   return (
     <Box flexDirection="column" padding={1}>
       {/* Header */}
-      <Box borderStyle="single" paddingX={1} marginBottom={1}>
-        <Text bold>{project?.title ?? 'Project'}</Text>
-        <Text> | </Text>
-        <Text>Epics: {epics.length}  Tasks: {allTasks.length}  </Text>
-        <Text color="green">Done: {doneTasks}/{allTasks.length}  </Text>
-        <Text color="yellow">In Progress: {inProgressTasks}  </Text>
-        <Text dimColor>[↑↓] Select [Enter] Go to Task Ops</Text>
+      <Box borderStyle="single" paddingX={1} marginBottom={1} flexDirection="column">
+        <Box justifyContent="space-between">
+          <Box>
+            <Text bold>{project?.title ?? 'Project'}</Text>
+            <Text> | </Text>
+            <Text>Epics: {epics.length}  Tasks: {allTasks.length}  </Text>
+          </Box>
+          <Box>
+            <Text color="green">Done: {doneTasks}/{allTasks.length}  </Text>
+            <Text color="yellow">Active: {activeTasks?.length ?? 0}  </Text>
+          </Box>
+        </Box>
+        {workflowProgress && (
+          <Box marginTop={1}>
+            <Text dimColor>Workflow Progress: </Text>
+            <ProgressBar value={workflowProgress.done_tasks} total={workflowProgress.total_tasks} width={40} />
+          </Box>
+        )}
       </Box>
 
+      {/* Active Tasks Monitoring */}
+      {activeTasks && activeTasks.length > 0 && (
+        <Box borderStyle="round" borderColor="yellow" paddingX={1} marginBottom={1} flexDirection="column">
+          <Text bold color="yellow">⚡ Active Agent Activity</Text>
+          {activeTasks.slice(0, 3).map(at => (
+            <Box key={at.id}>
+              <Text color="yellow">● [{at.id}] </Text>
+              <Text wrap="truncate-end">{at.latest_summary || at.title}</Text>
+              <Text dimColor> ({at.agent_platform || 'agent'})</Text>
+            </Box>
+          ))}
+          {activeTasks.length > 3 && <Text dimColor>  ... and {activeTasks.length - 3} more active tasks</Text>}
+        </Box>
+      )}
+
       {/* Scrollable list */}
-      <Box flexDirection="column">
+      <Box flexDirection="column" flexGrow={1}>
         {canScrollUp && <Text dimColor>  ↑ More above</Text>}
         {visibleRows.map((row) => {
           if (row.kind === 'spacer') return <Box key={row.key} />

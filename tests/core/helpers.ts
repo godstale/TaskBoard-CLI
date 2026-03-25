@@ -20,7 +20,7 @@ export function createTestDb() {
     );
     CREATE TABLE operations (
       id INTEGER PRIMARY KEY AUTOINCREMENT, task_id TEXT NOT NULL,
-      operation_type TEXT NOT NULL, agent_platform TEXT, summary TEXT,
+      operation_type TEXT NOT NULL, agent_platform TEXT, workflow_id TEXT, summary TEXT,
       details TEXT, subagent_used INTEGER DEFAULT 0, subagent_result TEXT,
       started_at TEXT, completed_at TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -35,8 +35,28 @@ export function createTestDb() {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
     CREATE TABLE settings (
-      key TEXT PRIMARY KEY, value TEXT NOT NULL, description TEXT,
-      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      workflow_id TEXT DEFAULT '',
+      key TEXT NOT NULL,
+      value TEXT NOT NULL,
+      description TEXT,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (workflow_id, key)
+    );
+    CREATE TABLE agent_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id TEXT,
+      workflow_id TEXT,
+      task_id TEXT,
+      event_type TEXT NOT NULL,
+      tool_name TEXT,
+      skill_name TEXT,
+      input_tokens INTEGER,
+      output_tokens INTEGER,
+      thinking_tokens INTEGER,
+      duration_ms INTEGER,
+      event_timestamp TEXT,
+      source TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
     CREATE TABLE checkpoints (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -54,20 +74,23 @@ export function createTestDb() {
     INSERT INTO tasks VALUES ('TST-T003','TST','task','JWT 검증',NULL,'todo','TST-E001','TST-W001',NULL,NULL,NULL,NULL,3,NULL,'["TST-T001"]',datetime('now'),datetime('now'));
     INSERT INTO tasks VALUES ('TST-O001','TST','objective','MVP 완료',NULL,'todo','TST',NULL,NULL,NULL,'Core features done','2026-04-01',NULL,NULL,NULL,datetime('now'),datetime('now'));
     INSERT INTO workflows VALUES ('TST-W001','TST','인증 워크플로우','TODO.md','active',datetime('now'));
-    INSERT INTO operations (id, task_id, operation_type, agent_platform, summary,
+    INSERT INTO operations (id, task_id, operation_type, agent_platform, workflow_id, summary,
       details, subagent_used, subagent_result, started_at, completed_at, created_at,
       tool_name, skill_name, mcp_name, retry_count, input_tokens, output_tokens, duration_seconds)
-    VALUES (1,'TST-T001','start','claude_code',NULL,
+    VALUES (1,'TST-T001','start','claude_code','TST-W001',NULL,
       NULL,0,NULL,datetime('now'),NULL,datetime('now'),
       NULL,NULL,NULL,0,NULL,NULL,NULL);
-    INSERT INTO operations (id, task_id, operation_type, agent_platform, summary,
+    INSERT INTO operations (id, task_id, operation_type, agent_platform, workflow_id, summary,
       details, subagent_used, subagent_result, started_at, completed_at, created_at,
       tool_name, skill_name, mcp_name, retry_count, input_tokens, output_tokens, duration_seconds)
-    VALUES (2,'TST-T001','complete','claude_code','로그인 API 완료',
+    VALUES (2,'TST-T001','complete','claude_code','TST-W001','로그인 API 완료',
       NULL,0,NULL,datetime('now'),datetime('now'),datetime('now'),
       'Edit',NULL,NULL,0,1200,450,42);
     INSERT INTO resources VALUES (1,'TST-T001','./docs/spec.md','API 스펙','input',datetime('now'));
-    INSERT INTO settings VALUES ('autonomy_level','moderate','Agent 자율성',datetime('now'));
+    INSERT INTO settings (workflow_id, key, value, description) VALUES ('', 'autonomy_level', 'moderate', 'Agent 자율성');
+    INSERT INTO settings (workflow_id, key, value, description) VALUES ('', '__schema_version', '7', 'Schema Version');
+    INSERT INTO agent_events (workflow_id, event_type, tool_name, duration_ms) VALUES ('TST-W001', 'tool_use', 'Edit', 1500);
+    INSERT INTO agent_events (workflow_id, event_type, tool_name, duration_ms) VALUES ('TST-W001', 'tool_use', 'Bash', 2000);
     INSERT INTO checkpoints VALUES (1,'before-refactor','{"TST-T001":{"status":"done","interrupt":null},"TST-T002":{"status":"todo","interrupt":null}}',datetime('now'));
   `)
 
