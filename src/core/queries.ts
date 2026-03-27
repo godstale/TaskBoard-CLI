@@ -178,9 +178,12 @@ export function getWorkflowProgress(db: Db, workflowId: string) {
 }
 
 /**
- * 에이전트 도구 사용 통계 (v7 이상)
+ * 에이전트 도구 사용 통계 (v7 이상 예정)
  */
 export function getAgentStats(db: Db, workflowId: string) {
+  // 현재 agent_events 테이블이 존재하지 않으므로 빈 배열 반환
+  return []
+  /*
   const version = getSchemaVersion(db)
   if (version < 7) return []
 
@@ -196,12 +199,16 @@ export function getAgentStats(db: Db, workflowId: string) {
     ORDER BY call_count DESC
   `
   return db.prepare(sql).all(workflowId)
+  */
 }
 
 /**
- * 최근 에이전트 이벤트 (v7 이상)
+ * 최근 에이전트 이벤트 (v7 이상 예정)
  */
 export function getRecentAgentEvents(db: Db, workflowId: string, limit: number = 50): AgentEvent[] {
+  // 현재 agent_events 테이블이 존재하지 않으므로 빈 배열 반환
+  return []
+  /*
   const version = getSchemaVersion(db)
   if (version < 7) return []
 
@@ -212,6 +219,7 @@ export function getRecentAgentEvents(db: Db, workflowId: string, limit: number =
     LIMIT ?
   `
   return db.prepare(sql).all(workflowId, limit) as AgentEvent[]
+  */
 }
 
 export function getResources(db: Db, taskId?: string, workflowId?: string): Resource[] {
@@ -249,45 +257,42 @@ export function getSettings(db: Db, workflowId?: string): Setting[] {
 
 /**
  * TaskOps 루트 폴더 내의 프로젝트 목록을 스캔한다.
- * 주어진 폴더 자체에 taskops.db가 있으면 단일 프로젝트로 반환하고,
- * 없으면 각 하위 폴더에서 taskops.db 파일이 있는 것만 반환.
  */
 export function getProjectList(taskopsRoot: string): Array<{ name: string; dbPath: string }> {
   if (!fs.existsSync(taskopsRoot)) return []
+  
+  // 루트 자체에 db가 있는 경우
   const directDb = path.join(taskopsRoot, 'taskops.db')
   if (fs.existsSync(directDb)) {
     return [{ name: path.basename(taskopsRoot), dbPath: directDb }]
   }
 
   const results: Array<{ name: string; dbPath: string }> = []
+  const maxDepth = 2 // 스캔 깊이 제한 (성능 최적화)
 
   function scan(dir: string, depth: number) {
-    if (depth <= 0) return
-    let entries: string[]
+    if (depth > maxDepth) return
+    
     try {
-      entries = fs.readdirSync(dir)
-    } catch {
-      return
-    }
-    for (const entry of entries) {
-      const entryPath = path.join(dir, entry)
-      let stat: fs.Stats
-      try {
-        stat = fs.statSync(entryPath)
-      } catch {
-        continue
+      const entries = fs.readdirSync(dir, { withFileTypes: true })
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue
+        
+        const entryPath = path.join(dir, entry.name)
+        const dbPath = path.join(entryPath, 'taskops.db')
+        
+        if (fs.existsSync(dbPath)) {
+          results.push({ name: entry.name, dbPath })
+        } else {
+          scan(entryPath, depth + 1)
+        }
       }
-      if (!stat.isDirectory()) continue
-      const dbPath = path.join(entryPath, 'taskops.db')
-      if (fs.existsSync(dbPath)) {
-        results.push({ name: entry, dbPath })
-      } else {
-        scan(entryPath, depth - 1)
-      }
+    } catch (err) {
+      // 권한 없음 등 에러 무시
     }
   }
 
-  scan(taskopsRoot, 3)
+  scan(taskopsRoot, 0)
   return results
 }
 
