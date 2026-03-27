@@ -68,9 +68,9 @@ If `--path` is omitted, the app will prompt for the path interactively on launch
 | `Tab` / `Shift+Tab` | Switch screen (Forward/Backward) |
 | `R` | Reload data |
 | `Q` | Quit |
-| `↑` / `↓` | Select task (Dashboard); Scroll operations (Task Operations) |
-| `Enter` | Jump to Task Operations for selected task (Dashboard) |
-| `←` / `→` | Select task (Task Operations screen) |
+| `↑` / `↓` | Select workflow (Workflows); Select task (Dashboard); Scroll operations (Task Ops) |
+| `Enter` | Select workflow (Workflows); Jump to Task Ops for selected task (Dashboard) |
+| `←` / `→` | Select task (Task Ops screen) |
 
 ---
 
@@ -115,12 +115,15 @@ The DB is monitored with chokidar (+ a 3-second polling fallback) and refreshes 
 
 ## Screens
 
+Other screens are locked (🔒) until a **Workflow** is selected in the Workflows screen.
+
 | Screen | Description |
 |--------|-------------|
+| **Workflows** | Select a workflow to view its tasks and progress |
 | **Dashboard** | Epic/Task hierarchy + progress bars |
-| **Task Operations** | Text operation timeline |
+| **Task Ops** | Text operation timeline and task-specific history |
 | **Resources** | Resource file list + type color coding |
-| **Settings** | Key/value settings table |
+| **Settings** | Key/value settings table + Project Checkpoints |
 
 ---
 

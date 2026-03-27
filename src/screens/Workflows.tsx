@@ -66,14 +66,20 @@ export function Workflows({ workflows, selectedWorkflowId, onSelectWorkflow }: P
             const isSelected = wf.id === selectedWorkflowId
             const statusColor = WORKFLOW_STATUS_COLOR[wf.status] ?? 'white'
             return (
-              <Box key={wf.id}>
-                <Text color="cyan">{isHighlighted ? '▶ ' : '  '}</Text>
-                <Text bold={isHighlighted} color={isSelected ? 'green' : (isHighlighted ? 'cyan' : 'white')}>
-                  [{wf.id}] {wf.title}
-                  {isSelected ? ' (SELECTED)' : ''}
-                </Text>
-                <Text color={statusColor}>  {wf.status}</Text>
-                {wf.description && <Text dimColor italic>  - {wf.description}</Text>}
+              <Box key={wf.id} flexDirection="column" marginBottom={1}>
+                <Box>
+                  <Text color="cyan">{isHighlighted ? '▶ ' : '  '}</Text>
+                  <Text bold={isHighlighted} color={isSelected ? 'green' : (isHighlighted ? 'cyan' : 'white')}>
+                    [{wf.id}] {wf.title}
+                    {isSelected ? ' (SELECTED)' : ''}
+                  </Text>
+                  <Text color={statusColor}>  {wf.status}</Text>
+                </Box>
+                {wf.description && (
+                  <Box paddingLeft={4}>
+                    <Text dimColor italic>{wf.description}</Text>
+                  </Box>
+                )}
               </Box>
             )
           })}
