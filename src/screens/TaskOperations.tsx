@@ -37,12 +37,13 @@ function formatTokens(n: number): string {
 interface Props {
   epics: EpicWithTasks[]
   operations: Operation[]
+  agentStats: any[]
   selectedTaskId: string | null
   setSelectedTask: (id: string | null) => void
   [key: string]: any
 }
 
-export function TaskOperations({ epics, operations, selectedTaskId, setSelectedTask }: Props) {
+export function TaskOperations({ epics, operations, agentStats, selectedTaskId, setSelectedTask }: Props) {
   const { stdout } = useStdout()
   const allTasks = epics.flatMap(e => e.tasks.map(t => t.task))
   const [taskIdx, setTaskIdx] = useState(() => {
@@ -71,7 +72,10 @@ export function TaskOperations({ epics, operations, selectedTaskId, setSelectedT
     : []
 
   const terminalRows = stdout?.rows ?? 24
-  const availableOpRows = Math.max(3, terminalRows - OVERHEAD_ROWS - DETAIL_PANEL_ROWS)
+  const hasStats = agentStats && agentStats.length > 0
+  const statsRows = hasStats ? Math.min(agentStats.length, 3) + 1 : 0
+  
+  const availableOpRows = Math.max(3, terminalRows - OVERHEAD_ROWS - DETAIL_PANEL_ROWS - statsRows)
 
   // Derive scroll offset to keep selectedOpIdx visible (centered)
   const opScrollOffset = Math.min(
@@ -116,7 +120,7 @@ export function TaskOperations({ epics, operations, selectedTaskId, setSelectedT
 
   return (
     <Box flexDirection="column" padding={1}>
-      {/* Task selection bar — flat Text-only children to prevent yoga height miscalculation */}
+      {/* Task selection bar */}
       <Box marginBottom={1}>
         {winStart > 0 && <Text dimColor>{'< '}</Text>}
         {visibleTaskBar.map((t) => (
@@ -132,8 +136,23 @@ export function TaskOperations({ epics, operations, selectedTaskId, setSelectedT
       </Box>
       <Text dimColor>[←→] Select Task  [↑↓] Select Operation</Text>
 
+      {/* Agent Stats (Tools Usage) */}
+      {hasStats && (
+        <Box borderStyle="single" borderColor="magenta" paddingX={2} marginTop={1} flexDirection="column">
+          <Text bold color="magenta">🛠 Tool Usage Stats (Workflow)</Text>
+          {agentStats.slice(0, 3).map(stat => (
+            <Box key={stat.tool_name}>
+              <Text color="cyan">{stat.tool_name.padEnd(15)}</Text>
+              <Text>{stat.call_count} calls  </Text>
+              <Text dimColor>Avg: {Math.round(stat.avg_duration_ms)}ms</Text>
+            </Box>
+          ))}
+          {agentStats.length > 3 && <Text dimColor>  ... and {agentStats.length - 3} more tools</Text>}
+        </Box>
+      )}
+
       {/* Operation list */}
-      <Box borderStyle="single" flexDirection="column" paddingX={2} marginTop={1}>
+      <Box borderStyle="single" flexDirection="column" paddingX={2} marginTop={1} flexGrow={1}>
         {selectedTask ? (
           <>
             <Text bold>{selectedTask.id}: {selectedTask.title}</Text>
@@ -167,7 +186,6 @@ export function TaskOperations({ epics, operations, selectedTaskId, setSelectedT
       <Box borderStyle="single" flexDirection="column" paddingX={2} marginTop={1}>
         {selectedOp ? (
           <>
-            {/* Line 1: type + time range + duration */}
             <Box>
               <Text bold color={OP_COLOR[selectedOp.operation_type]}>
                 {selectedOp.operation_type}{'  '}
@@ -180,7 +198,6 @@ export function TaskOperations({ epics, operations, selectedTaskId, setSelectedT
                 <Text color="yellow">{'  '}{formatDuration(selectedOp.duration_seconds)}</Text>
               )}
             </Box>
-            {/* Line 2: tool / skill / mcp */}
             {(selectedOp.tool_name || selectedOp.skill_name || selectedOp.mcp_name) && (
               <Box>
                 {selectedOp.tool_name && (
@@ -194,7 +211,6 @@ export function TaskOperations({ epics, operations, selectedTaskId, setSelectedT
                 )}
               </Box>
             )}
-            {/* Line 3: tokens + retry */}
             {(selectedOp.input_tokens != null || selectedOp.output_tokens != null || (selectedOp.retry_count ?? 0) > 0) && (
               <Box>
                 {(selectedOp.input_tokens != null || selectedOp.output_tokens != null) && (
@@ -211,7 +227,6 @@ export function TaskOperations({ epics, operations, selectedTaskId, setSelectedT
                 )}
               </Box>
             )}
-            {/* Fallback: no new data */}
             {!hasNewFields && <Text dimColor>No extra details</Text>}
           </>
         ) : (

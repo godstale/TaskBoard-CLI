@@ -1,10 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { openDb, closeDb, getProject, getEpicsWithTasks,
          getWorkflowOrder, getOperations, getResources,
-         getSettings, getWorkflows, getObjectives, getCheckpoints, watch } from './core/index.js'
+         getSettings, getWorkflows, getObjectives, getCheckpoints, 
+         getTaskProgressSummary, getCurrentlyInProgressTasks, 
+         getWorkflowProgress, getAgentStats, watch } from './core/index.js'
 import type {
   EpicWithTasks, Operation, Resource, Setting, ProjectInfo,
-  Workflow, Task, Checkpoint
+  Workflow, Task, Checkpoint, TaskProgressSummary, 
+  CurrentlyInProgressTask, WorkflowProgress, AgentStat
 } from './core/index.js'
 
 export type Db = ReturnType<typeof openDb>
@@ -20,6 +23,12 @@ interface TaskBoardState {
   workflows: Workflow[]
   objectives: Task[]
   checkpoints: Checkpoint[]
+  // Monitoring data (used by Dashboard/TaskOps)
+  taskProgress: TaskProgressSummary[]
+  activeTasks: CurrentlyInProgressTask[]
+  workflowProgress: WorkflowProgress | undefined
+  agentStats: AgentStat[]
+  
   selectedTaskId: string | null
   selectedWorkflowId: string | null
   screen: Screen
@@ -30,6 +39,7 @@ export function useTaskBoard(dbPath: string) {
   const [state, setState] = useState<TaskBoardState>({
     project: undefined, epics: [], operations: [], resources: [],
     settings: [], workflows: [], objectives: [], checkpoints: [],
+    taskProgress: [], activeTasks: [], workflowProgress: undefined, agentStats: [],
     selectedTaskId: null, selectedWorkflowId: null, screen: 'dashboard', error: null,
   })
 
@@ -56,6 +66,12 @@ export function useTaskBoard(dbPath: string) {
       const objectives = getObjectives(db!)
       const checkpoints = getCheckpoints(db!)
 
+      // Monitoring data
+      const taskProgress = currentWorkflowId ? getTaskProgressSummary(db!, currentWorkflowId) as TaskProgressSummary[] : []
+      const activeTasks = currentWorkflowId ? getCurrentlyInProgressTasks(db!, currentWorkflowId) as CurrentlyInProgressTask[] : []
+      const workflowProgress = currentWorkflowId ? getWorkflowProgress(db!, currentWorkflowId) as WorkflowProgress : undefined
+      const agentStats = currentWorkflowId ? getAgentStats(db!, currentWorkflowId) as AgentStat[] : []
+
       setState(prev => ({
         ...prev,
         project,
@@ -66,6 +82,10 @@ export function useTaskBoard(dbPath: string) {
         workflows,
         objectives,
         checkpoints,
+        taskProgress,
+        activeTasks,
+        workflowProgress,
+        agentStats,
         selectedWorkflowId: currentWorkflowId,
         error: null,
       }))

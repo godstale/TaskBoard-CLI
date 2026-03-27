@@ -2,7 +2,7 @@ import type { Db } from './db.js'
 import type {
   Task, Operation, Resource, Setting,
   ProjectInfo, EpicWithTasks, TaskWithChildren,
-  Workflow, Checkpoint
+  Workflow, Checkpoint, AgentEvent
 } from './models.js'
 import fs from 'fs'
 import path from 'path'
@@ -11,6 +11,17 @@ function parseTask(row: any): Task {
   return {
     ...row,
     depends_on: row.depends_on ? JSON.parse(row.depends_on) : undefined,
+  }
+}
+
+export function getSchemaVersion(db: Db): number {
+  try {
+    const row = db.prepare(
+      "SELECT value FROM settings WHERE workflow_id='' AND key='__schema_version'"
+    ).get() as any
+    return parseInt(row?.value ?? '0')
+  } catch {
+    return 0
   }
 }
 
@@ -85,6 +96,132 @@ export function getOperations(db: Db, taskId?: string, workflowId?: string): Ope
   return db.prepare(sql).all(...params) as Operation[]
 }
 
+/**
+ * 워크플로우별 최근 작업 로그 (실시간 피드용)
+ */
+export function getRecentOperations(db: Db, workflowId: string, afterId: number = 0, limit: number = 50): Operation[] {
+  const sql = `
+    SELECT o.*
+    FROM operations o
+    WHERE o.workflow_id = ? AND o.id > ?
+    ORDER BY o.id ASC
+    LIMIT ?
+  `
+  return db.prepare(sql).all(workflowId, afterId, limit) as Operation[]
+}
+
+/**
+ * 태스크별 진행 상태 요약
+ */
+export function getTaskProgressSummary(db: Db, workflowId: string) {
+  const sql = `
+    SELECT
+        t.id,
+        t.title,
+        t.status,
+        t.type,
+        COUNT(o.id)                         AS op_count,
+        MAX(o.created_at)                   AS last_activity,
+        SUM(CASE WHEN o.operation_type = 'error' THEN 1 ELSE 0 END) AS error_count
+    FROM tasks t
+    LEFT JOIN operations o ON o.task_id = t.id
+    WHERE t.workflow_id = ?
+      AND t.type IN ('epic', 'task')
+    GROUP BY t.id
+    ORDER BY t.seq_order
+  `
+  return db.prepare(sql).all(workflowId)
+}
+
+/**
+ * 현재 진행 중인 태스크
+ */
+export function getCurrentlyInProgressTasks(db: Db, workflowId: string) {
+  const sql = `
+    SELECT
+        t.id,
+        t.title,
+        t.type,
+        o.summary      AS latest_summary,
+        o.agent_platform,
+        o.created_at   AS last_updated
+    FROM tasks t
+    JOIN operations o ON o.id = (
+        SELECT id FROM operations
+        WHERE task_id = t.id
+        ORDER BY id DESC LIMIT 1
+    )
+    WHERE t.status = 'in_progress'
+      AND t.workflow_id = ?
+    ORDER BY o.id DESC
+  `
+  return db.prepare(sql).all(workflowId)
+}
+
+/**
+ * 워크플로우 전체 진행률
+ */
+export function getWorkflowProgress(db: Db, workflowId: string) {
+  const sql = `
+    SELECT
+        w.id,
+        w.title,
+        COUNT(CASE WHEN t.type = 'task' THEN 1 END)                          AS total_tasks,
+        COUNT(CASE WHEN t.type = 'task' AND t.status = 'done' THEN 1 END)   AS done_tasks,
+        COUNT(CASE WHEN t.type = 'task' AND t.status = 'in_progress' THEN 1 END) AS active_tasks
+    FROM workflows w
+    LEFT JOIN tasks t ON t.workflow_id = w.id
+    WHERE w.id = ?
+    GROUP BY w.id
+  `
+  return db.prepare(sql).get(workflowId)
+}
+
+/**
+ * 에이전트 도구 사용 통계 (v7 이상 예정)
+ */
+export function getAgentStats(db: Db, workflowId: string) {
+  // 현재 agent_events 테이블이 존재하지 않으므로 빈 배열 반환
+  return []
+  /*
+  const version = getSchemaVersion(db)
+  if (version < 7) return []
+
+  const sql = `
+    SELECT
+        tool_name,
+        COUNT(*)                    AS call_count,
+        AVG(duration_ms)            AS avg_duration_ms
+    FROM agent_events
+    WHERE workflow_id = ?
+      AND event_type = 'tool_use'
+    GROUP BY tool_name
+    ORDER BY call_count DESC
+  `
+  return db.prepare(sql).all(workflowId)
+  */
+}
+
+/**
+ * 최근 에이전트 이벤트 (v7 이상 예정)
+ */
+export function getRecentAgentEvents(db: Db, workflowId: string, limit: number = 50): AgentEvent[] {
+  // 현재 agent_events 테이블이 존재하지 않으므로 빈 배열 반환
+  return []
+  /*
+  const version = getSchemaVersion(db)
+  if (version < 7) return []
+
+  const sql = `
+    SELECT * FROM agent_events
+    WHERE workflow_id = ?
+    ORDER BY created_at DESC
+    LIMIT ?
+  `
+  return db.prepare(sql).all(workflowId, limit) as AgentEvent[]
+  */
+}
+
 export function getResources(db: Db, taskId?: string, workflowId?: string): Resource[] {
   let sql = "SELECT * FROM resources"
   const params: any[] = []
@@ -120,45 +257,42 @@ export function getSettings(db: Db, workflowId?: string): Setting[] {
 
 /**
  * TaskOps 루트 폴더 내의 프로젝트 목록을 스캔한다.
- * 주어진 폴더 자체에 taskops.db가 있으면 단일 프로젝트로 반환하고,
- * 없으면 각 하위 폴더에서 taskops.db 파일이 있는 것만 반환.
  */
 export function getProjectList(taskopsRoot: string): Array<{ name: string; dbPath: string }> {
   if (!fs.existsSync(taskopsRoot)) return []
+  
+  // 루트 자체에 db가 있는 경우
   const directDb = path.join(taskopsRoot, 'taskops.db')
   if (fs.existsSync(directDb)) {
     return [{ name: path.basename(taskopsRoot), dbPath: directDb }]
   }
 
   const results: Array<{ name: string; dbPath: string }> = []
+  const maxDepth = 2 // 스캔 깊이 제한 (성능 최적화)
 
   function scan(dir: string, depth: number) {
-    if (depth <= 0) return
-    let entries: string[]
+    if (depth > maxDepth) return
+    
     try {
-      entries = fs.readdirSync(dir)
-    } catch {
-      return
-    }
-    for (const entry of entries) {
-      const entryPath = path.join(dir, entry)
-      let stat: fs.Stats
-      try {
-        stat = fs.statSync(entryPath)
-      } catch {
-        continue
+      const entries = fs.readdirSync(dir, { withFileTypes: true })
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue
+        
+        const entryPath = path.join(dir, entry.name)
+        const dbPath = path.join(entryPath, 'taskops.db')
+        
+        if (fs.existsSync(dbPath)) {
+          results.push({ name: entry.name, dbPath })
+        } else {
+          scan(entryPath, depth + 1)
+        }
       }
-      if (!stat.isDirectory()) continue
-      const dbPath = path.join(entryPath, 'taskops.db')
-      if (fs.existsSync(dbPath)) {
-        results.push({ name: entry, dbPath })
-      } else {
-        scan(entryPath, depth - 1)
-      }
+    } catch (err) {
+      // 권한 없음 등 에러 무시
     }
   }
 
-  scan(taskopsRoot, 3)
+  scan(taskopsRoot, 0)
   return results
 }
 

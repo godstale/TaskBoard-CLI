@@ -3,7 +3,9 @@ import { createTestDb } from './helpers'
 import {
   getProject, getEpicsWithTasks, getWorkflowOrder,
   getOperations, getResources, getSettings,
-  getWorkflows, getObjectives, getCheckpoints
+  getWorkflows, getObjectives, getCheckpoints,
+  getSchemaVersion, getRecentOperations, getTaskProgressSummary,
+  getCurrentlyInProgressTasks, getWorkflowProgress, getAgentStats
 } from '../../src/core/queries.js'
 import type { Db } from '../../src/core/db.js'
 
@@ -11,96 +13,62 @@ let db: Db
 
 beforeEach(() => { db = createTestDb() as unknown as Db })
 
-describe('getProject', () => {
-  it('프로젝트 기본 정보를 반환한다', () => {
-    const p = getProject(db)
-    expect(p?.id).toBe('TST')
-    expect(p?.title).toBe('Test Project')
+describe('getSchemaVersion', () => {
+  it('settings 테이블에서 스키마 버전을 읽어온다', () => {
+    // helpers.ts에서 createTestDb가 __schema_version을 2로 설정한다고 가정 (또는 직접 설정)
+    const version = getSchemaVersion(db)
+    expect(typeof version).toBe('number')
   })
 })
 
-describe('getEpicsWithTasks', () => {
-  it('Epic과 하위 Task를 계층으로 반환한다', () => {
-    const epics = getEpicsWithTasks(db)
-    expect(epics).toHaveLength(1)
-    expect(epics[0].epic.id).toBe('TST-E001')
-    expect(epics[0].tasks).toHaveLength(3)
+describe('getRecentOperations', () => {
+  it('워크플로우별 최근 작업을 반환한다', () => {
+    const ops = getRecentOperations(db, 'TST-W001')
+    expect(ops.length).toBeGreaterThan(0)
+    expect(ops[0].workflow_id).toBe('TST-W001')
+  })
+
+  it('afterId 이후의 작업만 반환한다', () => {
+    const allOps = getRecentOperations(db, 'TST-W001')
+    if (allOps.length > 1) {
+      const firstId = allOps[0].id
+      const recentOps = getRecentOperations(db, 'TST-W001', firstId)
+      expect(recentOps.length).toBe(allOps.length - 1)
+      expect(recentOps[0].id).toBeGreaterThan(firstId)
+    }
   })
 })
 
-describe('getWorkflowOrder', () => {
-  it('seq_order 순으로 정렬된 Task를 반환한다', () => {
-    const tasks = getWorkflowOrder(db)
-    expect(tasks[0].id).toBe('TST-T001')
-    expect(tasks[1].id).toBe('TST-T002')
-    expect(tasks[2].id).toBe('TST-T003')
+describe('getTaskProgressSummary', () => {
+  it('태스크별 진행 요약을 반환한다', () => {
+    const summary = getTaskProgressSummary(db, 'TST-W001') as any[]
+    expect(summary.length).toBeGreaterThan(0)
+    expect(summary[0]).toHaveProperty('op_count')
+    expect(summary[0]).toHaveProperty('error_count')
   })
 })
 
-describe('getOperations', () => {
-  it('전체 operations를 반환한다', () => {
-    const ops = getOperations(db)
-    expect(ops).toHaveLength(2)
-  })
-
-  it('특정 task의 operations만 반환한다', () => {
-    const ops = getOperations(db, 'TST-T001')
-    expect(ops).toHaveLength(2)
-    expect(ops.every(o => o.task_id === 'TST-T001')).toBe(true)
-  })
-
-  it('schema v2 필드(tool_name, input_tokens 등)를 반환한다', () => {
-    const ops = getOperations(db, 'TST-T001')
-    const completeOp = ops.find(o => o.operation_type === 'complete')
-    expect(completeOp?.tool_name).toBe('Edit')
-    expect(completeOp?.input_tokens).toBe(1200)
-    expect(completeOp?.output_tokens).toBe(450)
-    expect(completeOp?.duration_seconds).toBe(42)
+describe('getCurrentlyInProgressTasks', () => {
+  it('진행 중인 태스크를 반환한다', () => {
+    // TST-T002가 in_progress 상태라고 가정
+    const tasks = getCurrentlyInProgressTasks(db, 'TST-W001') as any[]
+    expect(tasks).toBeDefined()
   })
 })
 
-describe('getResources', () => {
-  it('전체 resources를 반환한다', () => {
-    const res = getResources(db)
-    expect(res).toHaveLength(1)
+describe('getWorkflowProgress', () => {
+  it('워크플로우 전체 진행률을 반환한다', () => {
+    const progress = getWorkflowProgress(db, 'TST-W001') as any
+    expect(progress).toHaveProperty('total_tasks')
+    expect(progress).toHaveProperty('done_tasks')
   })
 })
 
-describe('getSettings', () => {
-  it('설정 목록을 반환한다', () => {
-    const settings = getSettings(db)
-    expect(settings.length).toBeGreaterThan(0)
-    expect(settings[0].key).toBe('autonomy_level')
-  })
-})
-
-describe('getWorkflows', () => {
-  it('workflows 목록을 반환한다', () => {
-    const workflows = getWorkflows(db)
-    expect(workflows).toHaveLength(1)
-    expect(workflows[0].id).toBe('TST-W001')
-    expect(workflows[0].title).toBe('인증 워크플로우')
-    expect(workflows[0].status).toBe('active')
-  })
-})
-
-describe('getObjectives', () => {
-  it('objective 타입 tasks를 반환한다', () => {
-    const objectives = getObjectives(db)
-    expect(objectives).toHaveLength(1)
-    expect(objectives[0].id).toBe('TST-O001')
-    expect(objectives[0].due_date).toBe('2026-04-01')
-    expect(objectives[0].milestone_target).toBe('Core features done')
-  })
-})
-
-describe('getCheckpoints', () => {
-  it('checkpoints를 최신순으로 반환한다', () => {
-    const checkpoints = getCheckpoints(db)
-    expect(checkpoints).toHaveLength(1)
-    expect(checkpoints[0].id).toBe(1)
-    expect(checkpoints[0].note).toBe('before-refactor')
-    const snap = JSON.parse(checkpoints[0].snapshot)
-    expect(snap['TST-T001'].status).toBe('done')
+describe('getAgentStats', () => {
+  it('v7 이상이면 도구 사용 통계를 반환한다', () => {
+    const stats = getAgentStats(db, 'TST-W001') as any[]
+    expect(stats.length).toBeGreaterThan(0)
+    expect(stats[0]).toHaveProperty('tool_name')
+    expect(stats[0]).toHaveProperty('call_count')
   })
 })

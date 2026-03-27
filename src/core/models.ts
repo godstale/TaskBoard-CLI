@@ -110,3 +110,55 @@ export interface Checkpoint {
   snapshot: string   // JSON: {task_id: {status, interrupt}}
   created_at: string
 }
+
+export type AgentEventType = 'tool_use' | 'tool_result' | 'thinking' | 'subagent_start' | 'subagent_end'
+
+export interface AgentEvent {
+  id: number
+  session_id?: string
+  workflow_id?: string
+  task_id?: string
+  event_type: AgentEventType
+  tool_name?: string
+  skill_name?: string
+  input_tokens?: number
+  output_tokens?: number
+  thinking_tokens?: number
+  duration_ms?: number
+  event_timestamp?: string
+  source?: 'hook' | 'jsonl'
+  created_at: string
+}
+
+export interface TaskProgressSummary {
+  id: string
+  title: string
+  status: TaskStatus
+  type: TaskType
+  op_count: number
+  last_activity: string
+  error_count: number
+}
+
+export interface CurrentlyInProgressTask {
+  id: string
+  title: string
+  type: TaskType
+  latest_summary: string
+  agent_platform: string
+  last_updated: string
+}
+
+export interface WorkflowProgress {
+  id: string
+  title: string
+  total_tasks: number
+  done_tasks: number
+  active_tasks: number
+}
+
+export interface AgentStat {
+  tool_name: string
+  call_count: number
+  avg_duration_ms: number
+}
